@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import sys
@@ -8,7 +8,9 @@ import subprocess
 import tempfile
 import logging
 from contextlib import contextmanager
-#from delphin.mrs import simplemrs
+from delphin import itsdb
+from delphin.mrs import simplemrs
+from delphin.mrs.compare import compare_bags
 
 # thanks: http://stackoverflow.com/questions/6194499/python-os-system-pushd
 @contextmanager
@@ -17,6 +19,18 @@ def pushd(path):
     os.chdir(path)
     yield
     os.chdir(prev_dir)
+
+def logtee(s, loglevel, logfile):
+    logging.log(loglevel, s)
+    print(s, file=logfile or sys.stderr)
+
+def debug(s, logfile): logtee(s, logging.DEBUG, logfile)
+def info(s, logfile): logtee(s, logging.INFO, logfile)
+def warning(s, logfile): logtee(s, logging.WARNING, logfile)
+def error(s, logfile): logtee(s, logging.ERROR, logfile)
+
+def red(s): return '\x1b[31m{}\x1b[0m'.format(s)
+def green(s): return '\x1b[32m{}\x1b[0m'.format(s)
 
 def temp_dir():
     tmp = tempfile.mkdtemp()
@@ -30,54 +44,82 @@ def check_exist(path):
     return False
 
 def ace_compile(cfg_path, out_path, log=None):
-    logging.debug('Compiling grammar at {}'.format(abspath(cfg_path)))
+    debug('Compiling grammar at {}'.format(abspath(cfg_path)), log)
     try:
         subprocess.check_call(
             ['ace', '-g', cfg_path, '-G', out_path],
             stdout=log, stderr=log, close_fds=True
         )
     except (subprocess.CalledProcessError, OSError):
-        logging.error(
+        error(
             'Failed to compile grammar with ACE. See {}'
-            .format(abspath(log.name) if log is not None else '<stderr>')
+            .format(abspath(log.name) if log is not None else '<stderr>'),
+            log
         )
         raise
-    logging.debug('Compiled grammar written to {}'.format(abspath(out_path)))
+    debug('Compiled grammar written to {}'.format(abspath(out_path)), log)
 
 def mkprof(skel_dir, dest_dir, log=None):
-    logging.debug('Preparing profile: {}'.format(abspath(skel_dir)))
+    debug('Preparing profile: {}'.format(abspath(skel_dir)), log)
     try:
         subprocess.check_call(
             ['mkprof', '-s', skel_dir, dest_dir],
             stdout=log, stderr=log, close_fds=True
         )
     except (subprocess.CalledProcessError, OSError):
-        logging.error(
+        error(
             'Failed to prepare profile with mkprof. See {}'
-            .format(abspath(log.name) if log is not None else '<stderr>')
+            .format(abspath(log.name) if log is not None else '<stderr>'),
+            log
         )
         raise
-    logging.debug('Completed running mkprof. Output at {}'.format(dest_dir))
+    debug('Completed running mkprof. Output at {}'.format(dest_dir), log)
 
 def run_art(grm, dest_dir, log=None):
-    logging.debug('Parsing profile: {}'.format(abspath(dest_dir)))
+    debug('Parsing profile: {}'.format(abspath(dest_dir)), log)
     try:
         subprocess.check_call(
             ['art', '-a', 'ace -g {}'.format(grm), dest_dir],
             stdout=log, stderr=log, close_fds=True
         )
     except (subprocess.CalledProcessError, OSError):
-        logging.error(
+        error(
             'Failed to parse profile with art. See {}'
-            .format(abspath(log.name) if log is not None else '<stderr>')
+            .format(abspath(log.name) if log is not None else '<stderr>'),
+            log
         )
         raise
-    finally:
-        log.close()
-    logging.debug('Completed running art. Output at {}'.format(dest_dir))
+    debug('Completed running art. Output at {}'.format(dest_dir), log)
+
+def compare_mrs(dest_dir, gold_dir, log=None):
+    debug('Comparing output ({}) to gold ({})'.format(dest_dir, gold_dir), log)
+    test_profile = itsdb.ItsdbProfile(dest_dir)
+    gold_profile = itsdb.ItsdbProfile(gold_dir)
+    matched_rows = itsdb.match_rows(
+        test_profile.read_table('result'),
+        gold_profile.read_table('result'),
+        'parse-id'
+    )
+    success = True
+    for (key, testrows, goldrows) in matched_rows:
+        (test_unique, shared, gold_unique) = compare_bags(
+            [simplemrs.loads_one(row['mrs']) for row in testrows],
+            [simplemrs.loads_one(row['mrs']) for row in goldrows]
+        )
+        if test_unique or gold_unique:
+            success = False
+        info('{}\t<{},{},{}>'.format(key, test_unique, shared, gold_unique),
+              log)
+    debug('Completed comparison. Test {}.'
+          .format('succeeded' if success else 'failed'),
+          log)
+    return success
+
 
 def regr_test(args):
     tmp = temp_dir()
+    pass_msg = green('pass')
+    fail_msg = red('fail')
     with pushd(args.grammar_dir):
         if args.compiled_grammar:
             grm = args.compiled_grammar
@@ -98,6 +140,8 @@ def regr_test(args):
             with open(pjoin(tmp, '{}.log'.format(prof)), 'w') as logfile:
                 mkprof(skel, dest, log=logfile)
                 run_art(grm, dest, log=logfile)
+                success = compare_mrs(dest, gold, log=logfile)
+                print('{}\t{}'.format(pass_msg if success else fail_msg, prof))
 
 
 if __name__ == '__main__':

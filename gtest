@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-python gtest.py "$@"
+python3 gtest.py "$@"
