@@ -18,7 +18,7 @@ In order to setup gtest for use, download ACE and art and make sure they are on 
 PATH=/opt/ace-0.9.18pre1:/opt/art-0.1.7:"$PATH"
 ```
 
-Also download pyDelphin and put it on `PYTHONPATH`. E.g. if pyDelphin is downloaded to `~/pydelphin`, then add this to your `.bashrc`:
+Also download pyDelphin (and install its dependencies, such as the Python3 version of networkx) and put it on `PYTHONPATH`. E.g. if pyDelphin is downloaded to `~/pydelphin`, then add this to your `.bashrc`:
 
 ```bash
 PYTHONPATH=~/pydelphin:"$PYTHONPATH"
