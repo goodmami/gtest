@@ -12,7 +12,9 @@ from glob import glob
 from fnmatch import fnmatch
 import logging
 from contextlib import contextmanager
+
 from delphin import itsdb
+from delphin.interfaces import ace
 from delphin.mrs import simplemrs
 from delphin.mrs.compare import compare_bags
 
@@ -93,18 +95,7 @@ def find_testable_profiles(profs, skel_dir, gold_dir):
 
 def ace_compile(cfg_path, out_path, log=None):
     debug('Compiling grammar at {}'.format(abspath(cfg_path)), log)
-    try:
-        subprocess.check_call(
-            ['ace', '-g', cfg_path, '-G', out_path],
-            stdout=log, stderr=log, close_fds=True
-        )
-    except (subprocess.CalledProcessError, OSError):
-        error(
-            'Failed to compile grammar with ACE. See {}'
-            .format(abspath(log.name) if log is not None else '<stderr>'),
-            log
-        )
-        raise
+    ace.compile(cfg_path, out_path, log=log)
     debug('Compiled grammar written to {}'.format(abspath(out_path)), log)
 
 
@@ -223,7 +214,14 @@ def regr_list_profiles(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(
-        description='Test DELPH-IN grammars from the commandline'
+        prog='gtest',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description='Test DELPH-IN grammars from the commandline',
+        epilog='examples:\n'
+            '  gtest -G ~/mygram R --list-profiles\n'
+            '  gtest -G ~/mygram R :\*\n'
+            '  gtest -G ~/mygram -C ~/mygram.dat R ~/mygram/tsdb/skeletons/*\n'
+            '  gtest -A ~/bin/ace -G ~/mygram R -s tsdb/skels :xyz :abc\*\n'
     )
     parser.add_argument(
         '-v', '--verbose',
@@ -249,6 +247,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-C', '--compiled-grammar',
+        metavar='PATH',
         help='A pre-compiled grammar image; if unset, the grammar will be '
              'compiled to a temporary location.'
     )
@@ -260,6 +259,7 @@ if __name__ == '__main__':
     regr.add_argument(
         'profiles',
         nargs='*',
+        default=[':*'],
         help='One or more profiles to test. Each profile can be a filesystem '
              'path, or a colon-prefixed profile name (e.g. :prof1) found at '
              '{skel-dir/}profile. The path or name is used for the skeleton, '
