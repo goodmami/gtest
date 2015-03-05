@@ -7,9 +7,9 @@ Here's a short guide to adding a new module for an imaginary `xylophone` test:
 
 1. Create your new module and place it under the `gtest/` directory.
     * Provide a `run(args)` function. The `run()` function is called by
-      `gTest` with the `args` paramether containing the command line
+      `gTest` with the `args` parameter containing the command line
       arguments. This is the only entry point from the command line.
-    * Resolve any relative paths with the `util.make_keypath()`.
+    * Resolve any relative paths with `util.make_keypath()`.
     * Prepare any things necessary for your testing environment. You may call
       the preparation methods given in `util`, such as `prepare()` or
       `prepare_working_directory()`, or define these steps yourself.
