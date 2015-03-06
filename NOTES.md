@@ -11,7 +11,7 @@ Here's a short guide to adding a new module for an imaginary `xylophone` test:
       arguments. This is the only entry point from the command line.
     * Resolve any relative paths with `util.make_keypath()`.
     * Prepare any things necessary for your testing environment. You may call
-      the preparation methods given in `util`, such as `prepare()` or
+      the preparation methods given in `util`, such as
       `prepare_working_directory()`, or define these steps yourself.
     * Feel free to import other things from `util.py` or other modules
       (e.g. `skeletons.py` for tests that parse from skeletons).

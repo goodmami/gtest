@@ -60,18 +60,18 @@ if __name__ == '__main__':
     skel_parser.add_argument(
         dest='profiles',
         nargs='*',
-        default=[':*'],
-        help='One or more profiles to test (RELPATH: {skel-dir}). Paths '
+        help='Zero or more profiles to test (RELPATH: {skel-dir}). Paths '
             'may include globbing asterisks, although colon-prefixed '
             'relative paths must escape the asterisks to avoid shell '
-            'expansion (e.g. :prof\*).'
+            'expansion (e.g. :prof\*). If no profiles are given, all '
+            'findable profiles (via the --list-profiles option) will '
+            'be used.'
     )
     skel_parser.add_argument(
         '-l', '--list-profiles',
-        nargs='?', metavar='profile', const=True,
+        action='store_true',
         help='List testable profiles that are findable with the current '
-             'settings. If `profile` is given, it is a profile name---as '
-             'in the `profiles` argument---that must match.'
+             'settings.'
     )
     skel_parser.add_argument(
         '-s', '--skel-dir',
@@ -114,10 +114,15 @@ if __name__ == '__main__':
     covr = subparsers.add_parser(
         'C',
         parents=[skel_parser],
-        help='coverage',
+        help='parsing coverage',
         epilog='examples:\n'
             '  gTest -G ~/mygram C --list-profiles\n'
             '  gTest -G ~/mygram C :abc'
+    )
+    covr.add_argument(
+        '-g', '--generate',
+        action='store_true',
+        help='also test generation coverage'
     )
     covr.set_defaults(test=coverage)
 

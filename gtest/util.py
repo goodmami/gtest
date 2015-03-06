@@ -22,15 +22,17 @@ from delphin.interfaces import ace
 
 def logtee(s, loglevel, logfile):
     logging.log(loglevel, s)
-    print(s, file=logfile or sys.stderr)
+    if logfile:
+        print(s, file=logfile)# or sys.stderr)
 
-def debug(s, logfile): logtee(s, logging.DEBUG, logfile)
-def info(s, logfile): logtee(s, logging.INFO, logfile)
-def warning(s, logfile): logtee(s, logging.WARNING, logfile)
-def error(s, logfile): logtee(s, logging.ERROR, logfile)
+def debug(s, logfile=None): logtee(s, logging.DEBUG, logfile)
+def info(s, logfile=None): logtee(s, logging.INFO, logfile)
+def warning(s, logfile=None): logtee(s, logging.WARNING, logfile)
+def error(s, logfile=None): logtee(s, logging.ERROR, logfile)
 
 def red(s): return '\x1b[31m{}\x1b[0m'.format(s)
 def green(s): return '\x1b[32m{}\x1b[0m'.format(s)
+def yellow(s): return '\x1b[33m{}\x1b[0m'.format(s)
 
 
 #
@@ -48,14 +50,14 @@ def pushd(path):
 
 def temp_dir():
     tmp = tempfile.mkdtemp()
-    debug('Temporary directory created at {}'.format(tmp), None)
+    debug('Temporary directory created at {}'.format(tmp))
     return tmp
 
 
 def check_exist(path):
     if exists(path):
         return True
-    warning('Path does not exist: {}'.format(abspath(path)), None)
+    warning('Path does not exist: {}'.format(abspath(path)))
     return False
 
 
@@ -63,11 +65,28 @@ def check_exist(path):
 KeyPath = namedtuple('PathKey', ('key', 'path'))
 
 
-def make_keypath(key, relpath):
+def make_keypath(key, basedir):
     if key.startswith(':'):
-        return KeyPath(key, pjoin(relpath, key[1:]))
+        return KeyPath(key, resolve_profile_key(key, basedir))
     else:
-        return KeyPath(key, key)
+        return KeyPath(make_profile_key(key, basedir), key)
+
+
+def resolve_profile_key(key, basedir):
+    if key.startswith(':'):
+        return pjoin(basedir, key[1:])
+    else:
+        return key
+
+
+def make_profile_key(path, basedir):
+    _relpath =  relpath(path, basedir)
+    if basedir and exists(pjoin(basedir, _relpath)):
+        return ':{}'.format(_relpath)
+    elif exists(relpath(path)):
+        return relpath(path)
+    else:
+        return path
 
 
 def dir_is_profile(path, skeleton=False):
@@ -85,12 +104,14 @@ def dir_is_profile(path, skeleton=False):
 # Prepare for test run
 #
 
-def prepare(args):
-    prepare_working_directory(args)
-    prepare_compiled_grammar(args)
 
-
-def prepare_working_directory(args):
+def prepare_working_directory(args, log=None):
+    """
+    Prepare args.working_dir for a test. If args.working_dir is unset,
+    a temporary directory will be created and args.working_dir will be
+    set to its path. Otherwise, if args.working_dir exists, it will be
+    used, and if not, it will be created.
+    """
     qualifier = ''
     if args.working_dir:
         if not isdir(args.working_dir):
@@ -101,7 +122,7 @@ def prepare_working_directory(args):
                 error(
                     'Could not create working directory: {}'
                     .format(args.working_dir),
-                    None
+                    log
                 )
                 raise
         else:
@@ -111,11 +132,11 @@ def prepare_working_directory(args):
         qualifier = 'temporary '
     info(
         'Using {}working directory: {}'.format(qualifier, args.working_dir),
-        None
+        log
     )
 
 
-def prepare_compiled_grammar(args):
+def prepare_compiled_grammar(args, log=None, ace_log=None):
     if not args.working_dir or not isdir(args.working_dir):
         raise GTestError(
             'Cannot compile grammar without a working directory.'
@@ -131,9 +152,9 @@ def prepare_compiled_grammar(args):
             )
     else:
         compiled_grammar = pjoin(args.working_dir, 'gram.dat')
-        ace_compile(args.ace_config.path, compiled_grammar)
-        args.compiled_grammar = compiled_grammar
-    info('Using grammar image: {}'.format(args.compiled_grammar), None)
+        ace_compile(args.ace_config.path, compiled_grammar, log=ace_log)
+        args.compiled_grammar = make_keypath(compiled_grammar, '')
+    info('Using grammar image: {}'.format(args.compiled_grammar.path), log)
 
 
 #
@@ -177,11 +198,12 @@ def mkprof(skel_dir, dest_dir, log=None):
     debug('Completed running mkprof. Output at {}'.format(dest_dir), log)
 
 
-def run_art(grm, dest_dir, log=None):
+def run_art(grm, dest_dir, options=None, ace_options=None, log=None):
     debug('Parsing profile: {}'.format(abspath(dest_dir)), log)
     try:
+        ace_cmd = 'ace -g {} {}'.format(grm, ' '.join(ace_options or []))
         subprocess.check_call(
-            ['art', '-a', 'ace -g {}'.format(grm), dest_dir],
+            ['art', '-a', ace_cmd, dest_dir] + (options or []),
             stdout=log, stderr=log, close_fds=True
         )
     except (subprocess.CalledProcessError, OSError):
