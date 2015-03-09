@@ -1,4 +1,5 @@
 
+import re
 from collections import OrderedDict
 from functools import partial
 from os.path import join as pjoin, basename
@@ -112,60 +113,88 @@ def generation_coverage(prof_path, pc):
     return cov
 
 
-template2 = '  {:12s}: {:4d}/{:<4d} ({:6.4f}) : {:4d}/{:<4d} ({:6.4f})'
-template2s = '  {:12s}: {:4d}/{:<4d} ({:6s}) : {:4d}/{:<4d} ({:6s})'
-template3 = '  {:12s}: {:4d}/{:<4d} ({:6.4f}) : {:4d}/{:<4d} ({:6.4f}) : {:4d}/{:<4d} ({:6.4f}))'
+template2 = '  {:12s}: {:5d}/{:<5d} ({: <6.4f})     : {:5d}/{:<5d} ({: <6.4f})'
+template2s = '  {:12s}: {:5d}/{:<5d} {} : {:5d}/{:<5d} {}'
 
 def print_coverage_summary(name, cov):
     # todo: fix i-wf calculations for parsing
     item_total = cov['items'] + cov['*items'] + cov['?items']
-    print('{} ({} items):'.format(name, item_total))
+    print('{} ({} items; {} ignored):'.format(
+        name, item_total, cov['?items']
+    ))
+    
     if item_total == 0:
         print('  No items.')
         return
-    print('              : grammatical        : ungrammatical      : ignored ')
-    print(template3.format(
+    
+    print('              :       grammatical        :       ungrammatical')
+    print(template2.format(
         'items',
         cov['items'], item_total, float(cov['items']) / item_total,
-        cov['*items'], item_total, float(cov['*items']) / item_total,
-        cov['?items'], item_total, float(cov['?items']) / item_total
+        cov['*items'], item_total, float(cov['*items']) / item_total
     ))
-    val1 = val2 = 0
-    if cov['items']:
-        val1 = float(cov['has_parse']) / cov['items']
-    if cov['*items']:
-        val2 = float(cov['*has_parse']) / cov['*items']
-    #if cov['*items']:
 
+    s1 = s2 = '(------)    '
+    if cov['items']:
+        v1 = float(cov['has_parse']) / cov['items']
+        s1 = pad(
+            '({s}){pad}',
+            '{: <6.4f}'.format(v1),
+            10,
+            color=choose_color(v1, PARSE_OK, PARSE_GOOD),
+        )
+    if cov['*items']:
+        v2 = float(cov['*has_parse']) / cov['*items']
+        s2 = pad(
+            '({s}){pad}',
+            '{: <6.4f}'.format(v2),
+            10,
+            color=choose_color(v2, PARSE_OK, PARSE_GOOD, invert=True),
+        )
     print(template2s.format(
         'parses',
-        cov['has_parse'], cov['items'],
-        color('{:6.4f}', val1, PARSE_OK, PARSE_GOOD),
-        cov['*has_parse'], cov['*items'],
-        color('{:6.4f}', val2, PARSE_OK, PARSE_GOOD, invert=True)
+        cov['has_parse'], cov['items'], s1,
+        cov['*has_parse'], cov['*items'], s2
     ))
-    val1 = val2 = 0
+
+    s1 = s2 = '(------)    '
     if cov['has_parse']:
-        val1 = float(cov['readings']) / cov['has_parse']
+        v1 = float(cov['readings']) / cov['has_parse']
+        s1 = pad(
+            '({s}){pad}',
+            '{: <.4f}'.format(v1),
+            10
+        )
     if cov['*has_parse']:
-        val2 = float(cov['*readings']) / cov['*has_parse']
-    print(template2.format(
+        v2 = float(cov['*readings']) / cov['*has_parse']
+        s2 = pad(
+            '({s}){pad}',
+            '{: <.4f}'.format(v2),
+            10
+        )
+    print(template2s.format(
         'readings',
-        cov['readings'], cov['has_parse'], val1,
-        cov['*readings'], cov['*has_parse'], val2
+        cov['readings'], cov['has_parse'], s1,
+        cov['*readings'], cov['*has_parse'], s2
     ))
     #print('  realizations:')
     print()
 
 
-def color(fmt, x, ok_thresh, good_thresh, invert=False):
-    s = fmt.format(x)
+def pad(fmt, s, length, color=None):
+    pad = length - len(s)
+    if color is not None:
+        s = color(s)
+    return fmt.format(s=s, pad=' '*pad)
+
+
+def choose_color(x, ok_thresh, good_thresh, invert=False):
     if invert:
         x = 1 - x
     if x >= ok_thresh:
         if x >= good_thresh:
-            return green(s)
+            return green
         else:
-            return yellow(s)
+            return yellow
     else:
-        return red(s)
+        return red
