@@ -8,6 +8,8 @@ from gtest.util import (
     dir_is_profile, make_keypath, resolve_profile_key
 )
 
+from delphin import itsdb
+
 # Methods related to tests that read [incr tsdb()] skeletons
 
 def find_profiles(basedir, profile_match, skeleton=True):
@@ -53,3 +55,28 @@ def prepare_profile_keypaths(args, basedir, profile_match, skeleton=True):
                 warning('No profiles found for "{}"; skipping.'.format(k))
 
     args.profiles = profs
+
+def print_profile_header(name, skel):
+    prof = itsdb.ItsdbProfile(skel, index=False)
+    wf0_items = 0
+    wf1_items = 0
+    wf2_items = 0
+    for i, row in enumerate(prof.read_table('item')):
+        try:
+            wf = int(row['i-wf'])
+        except ValueError:
+            wf = -1
+        if wf == 0:
+            wf0_items += 1
+        elif wf == 1:
+            wf1_items += 1
+        elif wf == 2:
+            wf2_items += 1
+        else:
+            warning(
+                'Invalid i-wf value ({}) in line {} of {}'
+                .format(row['i-wf'], i + 1, skel)
+            )
+    print('{} ({} items; {} ignored):'.format(
+        name, wf0_items + wf1_items + wf2_items, wf2_items
+    ))

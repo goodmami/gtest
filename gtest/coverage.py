@@ -1,8 +1,8 @@
 
 import re
-from collections import OrderedDict
 from functools import partial
-from os.path import join as pjoin, basename
+from os.path import (join as pjoin, basename, normpath, sep)
+from subprocess import CalledProcessError
 
 from gtest.util import (
     prepare_working_directory, prepare_compiled_grammar,
@@ -11,7 +11,10 @@ from gtest.util import (
     mkprof, run_art
 )
 
-from gtest.skeletons import (find_profiles, prepare_profile_keypaths)
+from gtest.skeletons import (
+    find_profiles, prepare_profile_keypaths,
+    print_profile_header
+)
 
 from delphin import itsdb
 
@@ -44,43 +47,57 @@ def prepare(args):
 def coverage_test(args):
     for skel in args.profiles:
         name = skel.key
-        if name.startswith(':'):
-            name = name[1:]
-
-        info('Coverage testing profile: {}'.format(skel.key))
-
-        dest = pjoin(args.working_dir, basename(skel.path))
-        logf = pjoin(args.working_dir, 'run-{}.log'.format(name))
-
-        if not (check_exist(skel.path)):
-            print(skip_msg)
-            continue
+        logf = pjoin(
+            args.working_dir,
+            'run-{}.log'.format(
+                '_'.join(normpath(re.sub(r'^:', '', name)).split(sep))
+            )
+        )
+        
+        print_profile_header(name, skel.path)
 
         with open(logf, 'w') as logfile:
-            mkprof(skel.path, dest, log=logfile)
-            run_art(
-                args.compiled_grammar.path,
-                dest,
-                log=logfile)
-            cov = parsing_coverage(dest)
+            try:
+                cov = test_coverage(skel, args, logfile)
+                print_coverage_summary(name, cov)
+            except CalledProcessError:
+                print('  There was an error processing the testsuite.')
+                print('  See {}'.format(logf))
+            
 
-            if args.generate:
-                g_dest = pjoin(args.working_dir, basename(skel.path) + '.g')
-                mkprof(skel.path, g_dest, log=logfile)
-                run_art(
-                    args.compiled_grammar.path,
-                    g_dest,
-                    options=['-e', dest],
-                    ace_options=['-e'],
-                    log=logfile
-                )
-                cov = generation_coverage(g_dest, cov)
-            print_coverage_summary(name, cov)
+def test_coverage(skel, args, logfile):
+    info('Coverage testing profile: {}'.format(skel.key))
 
+    cov = {}
+    dest = pjoin(args.working_dir, basename(skel.path))
+
+    if not (check_exist(skel.path)):
+        print('  Skeleton was not found: {}'.format(skel.path))
+        return
+
+    mkprof(skel.path, dest, log=logfile)
+    run_art(
+        args.compiled_grammar.path,
+        dest,
+        log=logfile)
+    cov = parsing_coverage(dest)
+
+    if args.generate:
+        g_dest = pjoin(args.working_dir, basename(skel.path) + '.g')
+        mkprof(skel.path, g_dest, log=logfile)
+        run_art(
+            args.compiled_grammar.path,
+            g_dest,
+            options=['-e', dest],
+            ace_options=['-e'],
+            log=logfile
+        )
+        cov = generation_coverage(g_dest, cov)
+    return cov
 
 def parsing_coverage(prof_path):
     # todo: consider i-wf
-    cov = OrderedDict([
+    cov =dict([
         ('items', 0), # items with i-wf = 1
         ('*items', 0), # items with i-wf = 0
         ('?items', 0), # items with i-wf = 2
@@ -89,7 +106,7 @@ def parsing_coverage(prof_path):
         ('readings', 0),
         ('*readings', 0)
     ])
-    prof = itsdb.ItsdbProfile(prof_path)
+    prof = itsdb.ItsdbProfile(prof_path, index=False)
     for row in prof.join('item', 'parse'):
         wf = int(row['item:i-wf'])
         readings = int(row['parse:readings'])
@@ -119,9 +136,6 @@ template2s = '  {:12s}: {:5d}/{:<5d} {} : {:5d}/{:<5d} {}'
 def print_coverage_summary(name, cov):
     # todo: fix i-wf calculations for parsing
     item_total = cov['items'] + cov['*items'] + cov['?items']
-    print('{} ({} items; {} ignored):'.format(
-        name, item_total, cov['?items']
-    ))
     
     if item_total == 0:
         print('  No items.')
