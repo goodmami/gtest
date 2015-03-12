@@ -198,10 +198,16 @@ def mkprof(skel_dir, dest_dir, log=None):
     debug('Completed running mkprof. Output at {}'.format(dest_dir), log)
 
 
-def run_art(grm, dest_dir, options=None, ace_options=None, log=None):
+def run_art(grm, dest_dir, options=None,
+            ace_preprocessor=None, ace_options=None,
+            log=None):
     debug('Parsing profile: {}'.format(abspath(dest_dir)), log)
     try:
-        ace_cmd = 'ace -g {} {}'.format(grm, ' '.join(ace_options or []))
+        ace_cmd = '{prep}ace -g {gram} {opts}'.format(
+            prep=ace_preprocessor + ' | ' if ace_preprocessor else '',
+            gram=grm,
+            opts=' '.join(ace_options or [])
+        )
         subprocess.check_call(
             ['art', '-a', ace_cmd, dest_dir] + (options or []),
             stdout=log, stderr=log, close_fds=True

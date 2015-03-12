@@ -65,7 +65,14 @@ def regression_test(args):
         
         with open(logf, 'w') as logfile:
             mkprof(skel.path, dest, log=logfile)
-            run_art(args.compiled_grammar.path, dest, log=logfile)
+            run_art(
+                args.compiled_grammar.path,
+                dest,
+                options=args.art_opts,
+                ace_preprocessor=args.preprocessor,
+                ace_options=args.ace_opts,
+                log=logfile
+            )
             success = compare_mrs(dest, gold, log=logfile)
             print(pass_msg if success else fail_msg)
 
