@@ -30,10 +30,11 @@ def info(s, logfile=None): logtee(s, logging.INFO, logfile)
 def warning(s, logfile=None): logtee(s, logging.WARNING, logfile)
 def error(s, logfile=None): logtee(s, logging.ERROR, logfile)
 
-def red(s): return '\x1b[31m{}\x1b[0m'.format(s)
-def green(s): return '\x1b[32m{}\x1b[0m'.format(s)
-def yellow(s): return '\x1b[33m{}\x1b[0m'.format(s)
-
+def red(s): return color('\x1b[31m', s)
+def green(s): return color('\x1b[32m', s)
+def yellow(s): return color('\x1b[33m', s)
+def color(clr, s): return '{}{}\x1b[0m'.format(clr, s)
+def nocolor(clr, s): return s
 
 #
 # BASIC DIRECTORIES AND FILES
