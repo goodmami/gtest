@@ -36,6 +36,13 @@ if __name__ == '__main__':
         action='store_const', const=0, dest='verbosity',
         help='set verbosity to the quietest level'
     )
+    parser.add_argument(
+        '--color',
+        choices=('auto', 'always', 'never'),
+        default='auto',
+        help='show results in color when set to "always" or "auto" in '
+            'a tty (default: auto)'
+    )
     #parser.add_argument('-R', '--recursive', action='store_true')
     parser.add_argument(
         '-G', '--grammar-dir',
@@ -173,5 +180,10 @@ if __name__ == '__main__':
     if args.yy_mode:
         args.ace_opts.append('-y')
         args.art_opts.append('-Y')
+
+    if args.color == 'never' or (args.color == 'auto' and not
+                                 sys.stdout.isatty()):
+        import gtest.util
+        gtest.util.color = gtest.util.nocolor
 
     args.test.run(args)
