@@ -23,6 +23,8 @@ if __name__ == '__main__':
             '    gTest -G ~/zhong/cmn/zhs -A :ace/config-robust.tdl R\n'
             '  test coverage of the mrs profile with a pre-compiled grammar:\n'
             '    gTest -G ~/jacy -C :jacy.dat C :mrs\n'
+            '  test coverage using YY mode and a preprocessor:\n'
+            '    gTest -G ~/zhong/cmn/zhs -YP \'python ~/zhong/cmn/zhs/utils/cmn2yy.py\' C'
     )
     parser.add_argument(
         '-v', '--verbose',
@@ -86,7 +88,9 @@ if __name__ == '__main__':
     # )
 
 
-    skel_parser = argparse.ArgumentParser(add_help=False)
+    skel_parser = argparse.ArgumentParser(
+        add_help=False
+    )
     skel_parser.add_argument(
         dest='profiles',
         nargs='*',
@@ -120,6 +124,7 @@ if __name__ == '__main__':
 
     regr = subparsers.add_parser(
         'R',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         parents=[skel_parser],
         help='regression test',
         description='Run regression tests that compare the semantics of the current '
@@ -128,8 +133,7 @@ if __name__ == '__main__':
         epilog='examples:\n'
             '  gTest -G ~/mygram R --list-profiles\n'
             '  gTest -G ~/mygram R :\*\n'
-            '  gTest -G ~/mygram -C ~/mygram.dat R ~/mygram/tsdb/skeletons/*\n'
-            '  gTest -a \'ace -g blah -e -n5\' -G ~/mygram R -s tsdb/skels :xyz :abc\*\n'
+            '  gTest -G ~/mygram -C ~/mygram.dat R ~/mygram/tsdb/skeletons/*'
     )
     regr.add_argument(
         '--gold-dir',
@@ -143,6 +147,7 @@ if __name__ == '__main__':
 
     covr = subparsers.add_parser(
         'C',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         parents=[skel_parser],
         help='parsing coverage',
         epilog='examples:\n'
