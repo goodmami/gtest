@@ -79,20 +79,26 @@ def test_coverage(skel, args, logfile):
     run_art(
         args.compiled_grammar.path,
         dest,
-        log=logfile)
+        options=args.art_opts,
+        ace_preprocessor=args.preprocessor,
+        ace_options=args.ace_opts,
+        log=logfile
+    )
+
     cov = parsing_coverage(dest)
 
-    if args.generate:
-        g_dest = pjoin(args.working_dir, basename(skel.path) + '.g')
-        mkprof(skel.path, g_dest, log=logfile)
-        run_art(
-            args.compiled_grammar.path,
-            g_dest,
-            options=['-e', dest],
-            ace_options=['-e'],
-            log=logfile
-        )
-        cov = generation_coverage(g_dest, cov)
+    # if args.generate:
+    #     g_dest = pjoin(args.working_dir, basename(skel.path) + '.g')
+    #     mkprof(skel.path, g_dest, log=logfile)
+    #     run_art(
+    #         args.compiled_grammar.path,
+    #         g_dest,
+    #         options=args.art_opts + ['-e', dest],
+    #         ace_preprocessor=args.preprocessor,
+    #         ace_options=args.ace_opts + ['-e'],
+    #         log=logfile
+    #     )
+    #     cov = generation_coverage(g_dest, cov)
     return cov
 
 def parsing_coverage(prof_path):
