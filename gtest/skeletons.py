@@ -17,7 +17,7 @@ def find_profiles(basedir, profile_match, skeleton=True):
     for (dirpath, dirnames, filenames) in os.walk(basedir):
         if not dir_is_profile(dirpath, skeleton=skeleton):
             continue
-       	if profile_match(dirpath):
+        if profile_match(dirpath):
             profs.append(dirpath)
         dirnames.sort()  # this affects traversal order
     return profs

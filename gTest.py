@@ -5,7 +5,7 @@ import sys
 import shlex
 import logging
 
-from gtest import (regression, coverage)
+from gtest import (regression, coverage, semantics)
 
 if __name__ == '__main__':
     import argparse
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-v', '--verbose',
-        action='count', dest='verbosity', default=2,
+        action='count', dest='verbosity', default=1,
         help='increase the verbosity (can be repeated: -vvv)'
     )
     parser.add_argument(
@@ -167,6 +167,25 @@ if __name__ == '__main__':
     #     help='also test generation coverage'
     # )
     covr.set_defaults(test=coverage)
+
+    # Semantic (MRS) tests
+
+    sem = subparsers.add_parser(
+        'M',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[skel_parser],
+        help='semantic validity',
+        epilog='examples:\n'
+            '  gTest -G ~/mygram M --list-profiles\n'
+            '  gTest -G ~/mygram M :abc'
+    )
+    # covr.add_argument(
+    #     '--generate',
+    #     action='store_true',
+    #     help='also test generation coverage'
+    # )
+    sem.set_defaults(test=semantics)
+
 
     args = parser.parse_args()
     logging.basicConfig(level=50-(args.verbosity*10))

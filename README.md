@@ -3,30 +3,35 @@ gTest
 
 DELPH-IN Grammar Testing Tool
 
-The gTest tool is meant to help automate testing of DELPH-IN style HPSG grammars. Currently it only does regression testing against gold [incr tsdb()] profiles, but I may be interested in adding other kinds of tests (add a [feature request](https://github.com/goodmami/gtest/issues)). For example, tests for conformance to conventions (e.g. predicate names), semantic well-formedness, and so on.
+The gTest tool is meant to help automate testing of DELPH-IN style HPSG grammars. Currently it only does the following:
+
+- regression tests against gold [incr tsdb()] profiles
+- coverage tests against [incr tsdb()] skeletons
+- semantic tests against [incr tsdb()] skeletons
+
+Other tests can be added by following the instructions in the
+[NOTES.md](NOTES.md) file.
 
 ## Setup
 
 gTest relies heavily on several pieces of software:
   * [ACE](http://sweaglesw.org/linguistics/ace/)
   * [art](http://sweaglesw.org/linguistics/libtsdb/art)
-  * [pyDelphin](https://github.com/goodmami/pydelphin)
+  * [pyDelphin][]
 
-In order to setup gTest for use, download ACE and art and make sure they are on `PATH`. E.g. if ACE and art are installed to `/opt/ace-0.9.18pre1/` and `/opt/art-0.1.7/`, respectively, you can add something like this to your `.bashrc` file:
-
-```bash
-PATH=/opt/ace-0.9.18pre1:/opt/art-0.1.7:"$PATH"
-```
-
-Also download pyDelphin (and install its dependencies, such as the Python3 version of networkx) and put it on `PYTHONPATH`. E.g. if pyDelphin is downloaded to `~/pydelphin`, then add this to your `.bashrc`:
+In order to setup gTest for use, download ACE and art and make sure they are on `PATH`. E.g. if ACE and art are installed to `/opt/ace/` and `/opt/art/`, respectively, you can add something like this to your `.bashrc` file:
 
 ```bash
-PYTHONPATH=~/pydelphin:"$PYTHONPATH"
+PATH=/opt/ace:/opt/art:"$PATH"
 ```
+
+Also install [pyDelphin][] (via PIP or download and put it on `PYTHONPATH`; more details are available on pyDelphin's website).
 
 ## Usage
 
-gTest uses subcommands (like Subversion has `svn checkout` or `svn commit`), but currently there is only one, `R`, for regression testing. You can invoke it like this from the `gtest/` directory, followed by a list of tests:
+gTest uses subcommands (like Subversion has `svn checkout` or `svn commit`). You can invoke them like this from the `gtest/` directory, followed by a list of tests:
+
+##### Regression testing
 
 ```bash
 $ ./gTest -G ~/grammar/ R [tests..]
@@ -52,4 +57,18 @@ $ ./gTest -G ~/grammar/ R :testsuite*
 
 In all cases, the test specified is used to find the skeleton path, and the gold profile is then found by looking for relative portion of the path under the gold directory (e.g. `tsdb/gold/testsuite1`, etc.).
 
-There are global options (try `./gTest -h`) and options specific to regression testing (try `./gTest R -h`), mostly for adjusting the locations of relative paths.
+There are global options (try `./gTest -h`) and test-specific options (try `./gTest [R|C|M] -h`), mostly for adjusting the locations of relative paths.
+
+##### Coverage testing
+
+```bash
+$ ./gTest -G ~/grammar/ C [tests..]
+```
+
+##### Semantic testing
+
+```bash
+$ ./gTest -G ~/grammar/ M [tests..]
+```
+
+[pyDelphin]: https://github.com/goodmami/pydelphin
