@@ -102,13 +102,16 @@ def semantic_test_result(prof_path):
     prof = itsdb.ItsdbProfile(prof_path, index=False)
 
     for row in prof.join('parse', 'result'):
-        res['i-ids'].add(row['parse:i-id'])
+        iid, rid = row['parse:i-id'], row['result:result-id']
+        mrs = row['result:mrs']
+
+        res['i-ids'].add(iid)
         res['result'] += 1
 
         faults = []
-        if row['result:mrs']:
+        if mrs:
             try:
-                m = simplemrs.loads_one(row['result:mrs'])
+                m = simplemrs.loads_one(mrs)
                 if not m.is_well_formed():
                     faults.append('ill-formed')
                 if not m.is_connected():
@@ -123,15 +126,14 @@ def semantic_test_result(prof_path):
         else:
             faults.append('no-mrs')
         if faults:
-            info('{row[parse:i-id]}-{row[result:result-id]}\t{faults}'
-                 .format(row=row, faults=' '.join(faults)))
+            info('{iid}-{rid}\t{faults}'
+                 .format(iid=iid, rid=rid, faults=' '.join(faults)))
             if 'error' in faults:
-                debug(row['result:mrs'])
+                debug(mrs)
             for fault in faults:
                 res[fault] += 1
         else:
-            debug('{row[parse:i-id]}-{row[result:result-id]}'
-                  .format(row=row))
+            debug('{iid}-{rid}'.format(iid=iid, rid=rid))
     return res
 
 template1 = '  {:12s}: {:5d}/{:<5d} ({: >6.4f}{})'
@@ -142,20 +144,20 @@ def print_result_summary(name, res):
     if not i: return
 
     r = res['result']
-    print(template1.format('results', r, i, r/i, ' per item'))
+    print(template1.format('results', r, i, r/float(i), ' per item'))
     if not r: return
 
     m = res['no-mrs']
-    print(template2.format('No MRS', m, r, m/r, ' of results'))
+    print(template2.format('No MRS', m, r, m/float(r), ' of results'))
     m = r - m  # number with MRSs instead of number without
     if not m: return
 
     x = res['bad-mrs']
-    print(template2.format('Bad MRS', x, m, x/m, ''))
+    print(template2.format('Bad MRS', x, m, x/float(m), ''))
     x = res['ill-formed']
-    print(template2.format('Ill-formed', x, m, x/m, ''))
+    print(template2.format('Ill-formed', x, m, x/float(m), ''))
     x = res['disconnected']
-    print(template2.format('Disconnected', x, m, x/m, ''))
+    print(template2.format('Disconnected', x, m, x/float(m), ''))
     x = res['non-headed']
-    print(template2.format('Non-headed', x, m, x/m, ''))
+    print(template2.format('Non-headed', x, m, x/float(m), ''))
 
