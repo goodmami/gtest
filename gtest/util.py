@@ -110,54 +110,59 @@ def dir_is_profile(path, skeleton=False):
 
 def prepare_working_directory(args, log=None):
     """
-    Prepare args.working_dir for a test. If args.working_dir is unset,
-    a temporary directory will be created and args.working_dir will be
-    set to its path. Otherwise, if args.working_dir exists, it will be
+    Prepare working-dir for a test. If working-dir is unset,
+    a temporary directory will be created and working-dir will be
+    set to its path. Otherwise, if working-dir exists, it will be
     used, and if not, it will be created.
     """
     qualifier = ''
-    if args.working_dir:
-        if not isdir(args.working_dir):
+    if args['--working-dir']:
+        if not isdir(args['--working-dir']):
             try:
-                os.mkdir(args.working_dir)
+                os.mkdir(args['--working-dir'])
                 qualifier = 'newly created '
             except OSError:
                 error(
                     'Could not create working directory: {}'
-                    .format(args.working_dir),
+                    .format(args['--working-dir']),
                     log
                 )
                 raise
         else:
             qualifier = 'existing '
     else:
-        args.working_dir = temp_dir()
+        args['--working-dir'] = temp_dir()
         qualifier = 'temporary '
     info(
-        'Using {}working directory: {}'.format(qualifier, args.working_dir),
+        'Using {}working directory: {}'.format(qualifier, args['--working-dir']),
         log
     )
 
 
 def prepare_compiled_grammar(args, log=None, ace_log=None):
-    if not args.working_dir or not isdir(args.working_dir):
+    if not args['--working-dir'] or not isdir(args['--working-dir']):
         raise GTestError(
             'Cannot compile grammar without a working directory.'
         )
-    args.ace_config = make_keypath(args.ace_config, args.grammar_dir)
-    if args.compiled_grammar:
-        args.compiled_grammar = make_keypath(args.compiled_grammar,
-                                             args.grammar_dir)
-        if not check_exist(args.compiled_grammar.path):
+    args['--ace-config'] = make_keypath(
+        args['--ace-config'],
+        args['--grammar-dir']
+    )
+    if args['--compiled-grammar']:
+        args['--compiled-grammar'] = make_keypath(
+            args['--compiled-grammar'],
+            args['--grammar-dir']
+        )
+        if not check_exist(args['--compiled-grammar'].path):
             raise GTestError(
                 'Compiled grammar not found: {}'
-                .format(args.compiled_grammar.path)
+                .format(args['--compiled-grammar'].path)
             )
     else:
-        compiled_grammar = pjoin(args.working_dir, 'gram.dat')
-        ace_compile(args.ace_config.path, compiled_grammar, log=ace_log)
-        args.compiled_grammar = make_keypath(compiled_grammar, '')
-    info('Using grammar image: {}'.format(args.compiled_grammar.path), log)
+        compiled_grammar = pjoin(args['--working-dir'], 'gram.dat')
+        ace_compile(args['--ace-config'].path, compiled_grammar, log=ace_log)
+        args['--compiled-grammar'] = make_keypath(compiled_grammar, '')
+    info('Using grammar image: {}'.format(args['--compiled-grammar'].path), log)
 
 
 #
@@ -165,12 +170,12 @@ def prepare_compiled_grammar(args, log=None, ace_log=None):
 #
 
 def get_grammar(args, tmp):
-    if args.compiled_grammar:
-        grm = args.compiled_grammar.path
+    if args['--compiled-grammar']:
+        grm = args['--compiled-grammar'].path
     else:
         grm = pjoin(tmp, 'gram.dat')
         with open(pjoin(tmp, 'ace.log'), 'w') as ace_log:
-            ace_compile(args.ace_config, grm, log=ace_log)
+            ace_compile(args['--ace-config'], grm, log=ace_log)
     return grm
 
 

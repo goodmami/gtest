@@ -1,3 +1,24 @@
+
+"""
+Regression test by comparing parse results to stored gold profiles
+
+Usage: gtest (R|regression) [--skeletons=DIR] [--gold=DIR]
+                            (--list-profiles | <test-pattern> ...)
+
+Arguments (RELPATH: {skeletons}):
+  <test-pattern>        path or glob-pattern to a test skeleton
+
+Options (RELPATH: {grammar-dir}):
+  --skeletons=DIR       skeleton dir [default: :tsdb/skeletons/]
+  --gold=DIR            gold profile dir [default: :tsdb/gold/]
+  -l, --list-profiles   don't test, just list testable profiles
+
+Examples:
+    gtest -G ~/mygram R --list-profiles
+    gtest -G ~/jacy R :mrs
+    gtest -G ~/jacy R --skeletons=:tsdb/skeletons/tanaka/ :\\*
+"""
+
 import os
 from functools import partial
 from os.path import (
@@ -18,19 +39,19 @@ from delphin.mrs.compare import compare_bags
 
 
 def run(args):
-    args.skel_dir = make_keypath(args.skel_dir, args.grammar_dir)
-    args.gold_dir = make_keypath(args.gold_dir, args.grammar_dir)
+    args['--skeletons'] = make_keypath(args['--skeletons'], args['--grammar-dir'])
+    args['--gold'] = make_keypath(args['--gold'], args['--grammar-dir'])
 
     profile_match = partial(
         skel_has_gold,
-        skel_dir=abspath(args.skel_dir.path),
-        gold_dir=abspath(args.gold_dir.path)
+        skel_dir=abspath(args['--skeletons'].path),
+        gold_dir=abspath(args['--gold'].path)
     )
-    prepare_profile_keypaths(args, args.skel_dir.path, profile_match)
+    prepare_profile_keypaths(args, args['--skeletons'].path, profile_match)
 
-    if args.list_profiles:
+    if args['--list-profiles']:
         print('\n'.join(map(lambda p: '{}\t{}'.format(p.key, p.path),
-                            args.profiles)))
+                            args['<test-pattern>'])))
     else:
         prepare(args)  # note: args may change
         regression_test(args)
@@ -38,22 +59,22 @@ def run(args):
 
 def prepare(args):
     prepare_working_directory(args)
-    with open(pjoin(args.working_dir, 'ace.log'), 'w') as ace_log:
+    with open(pjoin(args['--working-dir'], 'ace.log'), 'w') as ace_log:
         prepare_compiled_grammar(args, ace_log=ace_log)
 
 
 def regression_test(args):
-    for skel in args.profiles:
+    for skel in args['<test-pattern>']:
         name = skel.key
         if name.startswith(':'):
             name = name[1:]
 
         info('Regression testing profile: {}'.format(skel.key))
 
-        dest = pjoin(args.working_dir, basename(skel.path))
-        logf = pjoin(args.working_dir, 'run-{}.log'.format(name))
+        dest = pjoin(args['--working-dir'], basename(skel.path))
+        logf = pjoin(args['--working-dir'], 'run-{}.log'.format(name))
 
-        gold = gold_path(skel.path, args.skel_dir.path, args.gold_dir.path)
+        gold = gold_path(skel.path, args['--skeletons'].path, args['--gold'].path)
 
         pass_msg = '{}\t{}'.format(green('pass'), skel.key)
         fail_msg = '{}\t{}; See {}'.format(red('fail'), skel.key, logf)
@@ -66,11 +87,11 @@ def regression_test(args):
         with open(logf, 'w') as logfile:
             mkprof(skel.path, dest, log=logfile)
             run_art(
-                args.compiled_grammar.path,
+                args['--compiled-grammar'].path,
                 dest,
-                options=args.art_opts,
-                ace_preprocessor=args.preprocessor,
-                ace_options=args.ace_opts,
+                options=args['--art-opts'],
+                ace_preprocessor=args['--preprocessor'],
+                ace_options=args['--ace-opts'],
                 log=logfile
             )
             success = compare_mrs(dest, gold, log=logfile)

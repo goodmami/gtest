@@ -1,4 +1,22 @@
 
+"""
+Test parsing coverage
+
+Usage: gtest (C|coverage) [--skeletons=DIR]
+                          (--list-profiles | <test-pattern> ...)
+
+Arguments (RELPATH: {skeletons}):
+  <test-pattern>        path or glob-pattern to a test skeleton
+
+Options (RELPATH: {grammar-dir}):
+  --skeletons=DIR       skeleton dir [default: :tsdb/skeletons/]
+  -l, --list-profiles   don't test, just list testable profiles
+
+Examples:
+    gtest -G ~/mygram C --list-profiles
+    gtest -G ~/mygram C :abc
+"""
+
 import re
 from functools import partial
 from os.path import (join as pjoin, basename, normpath, sep)
@@ -25,14 +43,14 @@ GENERATE_GOOD = 0.8
 GENERATE_OK = 0.5
 
 def run(args):
-    args.skel_dir = make_keypath(args.skel_dir, args.grammar_dir)
+    args['--skeletons'] = make_keypath(args['--skeletons'], args['--grammar-dir'])
 
     profile_match = partial(dir_is_profile, skeleton=True)
-    prepare_profile_keypaths(args, args.skel_dir.path, profile_match)
+    prepare_profile_keypaths(args, args['--skeletons'].path, profile_match)
 
-    if args.list_profiles:
+    if args['--list-profiles']:
         print('\n'.join(map(lambda p: '{}\t{}'.format(p.key, p.path),
-                            args.profiles)))
+                            args['<test-pattern>'])))
     else:
         prepare(args)  # note: args may change
         coverage_test(args)
@@ -40,15 +58,15 @@ def run(args):
 
 def prepare(args):
     prepare_working_directory(args)
-    with open(pjoin(args.working_dir, 'ace.log'), 'w') as ace_log:
+    with open(pjoin(args['--working-dir'], 'ace.log'), 'w') as ace_log:
         prepare_compiled_grammar(args, ace_log=ace_log)
 
 
 def coverage_test(args):
-    for skel in args.profiles:
+    for skel in args['<test-pattern>']:
         name = skel.key
         logf = pjoin(
-            args.working_dir,
+            args['--working-dir'],
             'run-{}.log'.format(
                 '_'.join(normpath(re.sub(r'^:', '', name)).split(sep))
             )
@@ -69,7 +87,7 @@ def test_coverage(skel, args, logfile):
     info('Coverage testing profile: {}'.format(skel.key))
 
     cov = {}
-    dest = pjoin(args.working_dir, basename(skel.path))
+    dest = pjoin(args['--working-dir'], basename(skel.path))
 
     if not (check_exist(skel.path)):
         print('  Skeleton was not found: {}'.format(skel.path))
@@ -77,25 +95,25 @@ def test_coverage(skel, args, logfile):
 
     mkprof(skel.path, dest, log=logfile)
     run_art(
-        args.compiled_grammar.path,
+        args['--compiled-grammar'].path,
         dest,
-        options=args.art_opts,
-        ace_preprocessor=args.preprocessor,
-        ace_options=args.ace_opts,
+        options=args['--art-opts'],
+        ace_preprocessor=args['--preprocessor'],
+        ace_options=args['--ace-opts'],
         log=logfile
     )
 
     cov = parsing_coverage(dest)
 
-    # if args.generate:
-    #     g_dest = pjoin(args.working_dir, basename(skel.path) + '.g')
+    # if args['--generate']:
+    #     g_dest = pjoin(args['--working-dir'], basename(skel.path) + '.g')
     #     mkprof(skel.path, g_dest, log=logfile)
     #     run_art(
-    #         args.compiled_grammar.path,
+    #         args['--compiled-grammar'].path,
     #         g_dest,
-    #         options=args.art_opts + ['-e', dest],
-    #         ace_preprocessor=args.preprocessor,
-    #         ace_options=args.ace_opts + ['-e'],
+    #         options=args['--art-opts'] + ['-e', dest],
+    #         ace_preprocessor=args['--preprocessor'],
+    #         ace_options=args['--ace-opts'] + ['-e'],
     #         log=logfile
     #     )
     #     cov = generation_coverage(g_dest, cov)

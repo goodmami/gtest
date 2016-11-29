@@ -26,14 +26,14 @@ def find_profiles(basedir, profile_match, skeleton=True):
 def prepare_profile_keypaths(args, basedir, profile_match, skeleton=True):
     profs = []
 
-    if not args.profiles:
+    if not args['<test-pattern>']:
         profs = [
             make_keypath(p, basedir)
             for p in find_profiles(basedir, profile_match, skeleton=skeleton)
         ]
 
     else:
-        for k in args.profiles:
+        for k in args['<test-pattern>']:
             p = resolve_profile_key(k, basedir)
             paths = glob(p)
             _profs = []
@@ -54,7 +54,7 @@ def prepare_profile_keypaths(args, basedir, profile_match, skeleton=True):
             else:
                 warning('No profiles found for "{}"; skipping.'.format(k))
 
-    args.profiles = profs
+    args['<test-pattern>'] = profs
 
 def print_profile_header(name, skel):
     prof = itsdb.ItsdbProfile(skel, index=False)

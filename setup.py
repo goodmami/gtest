@@ -45,11 +45,12 @@ setup(
         'gtest'
     ],
     install_requires=[
+        'docopt >=0.6.0',
         'pydelphin >=0.5.0'
     ],
-    #entry_points={
-    #    'console_scripts': [
-    #        'gtest=gtest.main:main'
-    #    ]
-    #}
+    entry_points={
+        'console_scripts': [
+            'gtest=gtest.main:main'
+        ]
+    }
 )
