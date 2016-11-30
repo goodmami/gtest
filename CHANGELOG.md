@@ -31,6 +31,7 @@ parsing them each time.
   - `M` > `semantics`
 * `--skeletons` option is now `--profiles` since it could be either
   skeletons or parsed profiles
+* Test iteration (for testing or listing) is now sorted (like `sort -V`)
 
 [docopt]: http://docopt.org/
 

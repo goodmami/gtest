@@ -6,7 +6,7 @@ import os
 from os.path import (
     abspath, relpath, basename, join as pjoin, exists, isdir, getsize
 )
-
+import re
 import logging
 import tempfile
 import subprocess
@@ -17,6 +17,18 @@ from gtest.exceptions import GTestError
 
 from delphin.interfaces import ace
 
+#
+# BASICS
+#
+
+def safe_int(s):
+    try:
+        return int(s)
+    except (ValueError, TypeError):
+        return s
+
+def directory_sort_key(f):
+    return list(map(safe_int, re.split(r'(\d+)', f)))
 
 #
 # LOGGING

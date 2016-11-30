@@ -6,6 +6,7 @@ from subprocess import CalledProcessError
 from glob import glob
 
 from gtest.util import (
+    directory_sort_key,
     debug, info, warning, error,
     dir_is_profile, make_keypath, resolve_profile_key,
     mkprof, run_art
@@ -27,8 +28,9 @@ def find_profiles(basedir, profile_match):
     for (dirpath, dirnames, filenames) in os.walk(basedir):
         if profile_match(dirpath):
             profs.append(dirpath)
-        dirnames.sort()  # this affects traversal order
-    return profs
+        # # sorting dirnames affects traversal order
+        # dirnames.sort(key=directory_sort_key)
+    return sorted(profs, key=directory_sort_key)
 
 
 def prepare_profile_keypaths(args, basedir, profile_match):
@@ -47,7 +49,7 @@ def prepare_profile_keypaths(args, basedir, profile_match):
     else:
         for k in args['<test-pattern>']:
             p = resolve_profile_key(k, basedir)
-            paths = glob(p)
+            paths = sorted(glob(p), key=directory_sort_key)
             _profs = []
             for path in glob(p):
                 if exists(path):
