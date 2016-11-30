@@ -6,13 +6,16 @@ This release uses [docopt][] to simplify adding new command parsers,
 and at the same time changes how gTest is invoked. If installed, a
 `gtest` command is made available (note it's all lowercase). When not
 installed, a `gtest.sh` script emulates the command's behavior for Posix
-shells.
+shells. Support is also added for testing static profiles, rather than
+parsing them each time.
 
 ### Added
 
 * `gtest.main` module
 * Entry point in `setup.py` for a `gtest` command
 * `gtest.sh` executable for running without installation
+* `--static` option tests with existing profiles and doesn't compile a
+  grammar or parse profiles
 
 ### Removed
 
@@ -26,6 +29,8 @@ shells.
   - `R` > `regression`
   - `C` > `coverage`
   - `M` > `semantics`
+* `--skeletons` option is now `--profiles` since it could be either
+  skeletons or parsed profiles
 
 [docopt]: http://docopt.org/
 

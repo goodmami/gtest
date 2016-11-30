@@ -1,35 +1,47 @@
 
 import os
-from os.path import exists
+from os.path import (exists, basename, normpath, join as pjoin, sep)
+from collections import namedtuple
+from subprocess import CalledProcessError
 from glob import glob
 
 from gtest.util import (
     debug, info, warning, error,
-    dir_is_profile, make_keypath, resolve_profile_key
+    dir_is_profile, make_keypath, resolve_profile_key,
+    mkprof, run_art
 )
 
 from delphin import itsdb
 
+
+ItsdbTest = namedtuple('ItsdbTest', ('name', 'path', 'destination', 'log'))
+
+
 # Methods related to tests that read [incr tsdb()] skeletons
 
-def find_profiles(basedir, profile_match, skeleton=True):
+def find_profiles(basedir, profile_match):
+    """
+    Return profiles under *basedir* matching *profile_match*.
+    """
     profs = []
     for (dirpath, dirnames, filenames) in os.walk(basedir):
-        if not dir_is_profile(dirpath, skeleton=skeleton):
-            continue
         if profile_match(dirpath):
             profs.append(dirpath)
         dirnames.sort()  # this affects traversal order
     return profs
 
 
-def prepare_profile_keypaths(args, basedir, profile_match, skeleton=True):
+def prepare_profile_keypaths(args, basedir, profile_match):
+    """
+    Expand the paths of all test items.
+    """
+
     profs = []
 
     if not args['<test-pattern>']:
         profs = [
             make_keypath(p, basedir)
-            for p in find_profiles(basedir, profile_match, skeleton=skeleton)
+            for p in find_profiles(basedir, profile_match)
         ]
 
     else:
@@ -39,9 +51,7 @@ def prepare_profile_keypaths(args, basedir, profile_match, skeleton=True):
             _profs = []
             for path in glob(p):
                 if exists(path):
-                    if not dir_is_profile(path, skeleton=True):
-                        debug('Found path is not a skeleton: {}'.format(path))
-                    elif profile_match(path):
+                    if profile_match(path):
                         _profs.append(make_keypath(path, basedir))
                     else:
                         debug('Profile found by "{}" not valid for the '
@@ -55,6 +65,43 @@ def prepare_profile_keypaths(args, basedir, profile_match, skeleton=True):
                 warning('No profiles found for "{}"; skipping.'.format(k))
 
     args['<test-pattern>'] = profs
+
+
+def test_iterator(args):
+    """
+    Iterate over test profiles, parsing them if necessary.
+    """
+    for test in args['<test-pattern>']:
+        logf = pjoin(
+            args['--working-dir'],
+            'run-{}.log'.format(
+                '_'.join(normpath(test.key.replace(':', '', 1)).split(sep))
+            )
+        )
+
+        if args['--static']:
+            debug('Using stored profile: {}'.format(test.path))
+            dest = test.path
+        else:
+            debug('Parsing skeleton: {}'.format(test.path))
+            dest = pjoin(args['--working-dir'], basename(test.path))
+            with open(logf, 'w') as logfile:
+                try:
+                    mkprof(test.path, dest, log=logfile)
+                    run_art(
+                        args['--compiled-grammar'].path,
+                        dest,
+                        options=args['--art-opts'],
+                        ace_preprocessor=args['--preprocessor'],
+                        ace_options=args['--ace-opts'],
+                        log=logfile
+                    )
+                except CalledProcessError:
+                    print('  There was an error processing the testsuite.')
+                    print('  See {}'.format(logf))
+
+        yield ItsdbTest(test.key, test.path, dest, logf)
+
 
 def print_profile_header(name, skel):
     prof = itsdb.ItsdbProfile(skel, index=False)

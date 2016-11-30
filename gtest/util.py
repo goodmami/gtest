@@ -76,6 +76,9 @@ def make_keypath(key, basedir):
 
 
 def resolve_profile_key(key, basedir):
+    """
+    Return the expanded path for *key*.
+    """
     if key.startswith(':'):
         return pjoin(basedir, key[1:])
     else:
@@ -140,6 +143,10 @@ def prepare_working_directory(args, log=None):
 
 
 def prepare_compiled_grammar(args, log=None, ace_log=None):
+    """
+    Ensure a compiled ACE grammar image is ready, compiling a new one if
+    --compiled-grammar is not specified.
+    """
     if not args['--working-dir'] or not isdir(args['--working-dir']):
         raise GTestError(
             'Cannot compile grammar without a working directory.'

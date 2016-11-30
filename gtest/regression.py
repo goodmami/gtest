@@ -2,36 +2,42 @@
 """
 Regression test by comparing parse results to stored gold profiles
 
-Usage: gtest (R|regression) [--skeletons=DIR] [--gold=DIR]
-                            (--list-profiles | <test-pattern> ...)
+Usage: gtest (R|regression) [--profiles=DIR] [--gold=DIR] [--static]
+                            [--list-profiles]
+                            [<test-pattern> ...]
 
-Arguments (RELPATH: {skeletons}):
-  <test-pattern>        path or glob-pattern to a test skeleton
+Arguments (RELPATH: {profiles}):
+  <test-pattern>        path or glob-pattern to a test skeleton or profile;
+                        only patterns matching both a skeleton/profile AND a
+                        gold profile will be allowed
 
 Options (RELPATH: {grammar-dir}):
-  --skeletons=DIR       skeleton dir [default: :tsdb/skeletons/]
+  --profiles=DIR        profile or skeleton dir [default: :tsdb/skeletons/]
   --gold=DIR            gold profile dir [default: :tsdb/gold/]
+  -s, --static          don't parse; do static analysis of parsed profiles
   -l, --list-profiles   don't test, just list testable profiles
 
 Examples:
     gtest -G ~/mygram R --list-profiles
     gtest -G ~/jacy R :mrs
-    gtest -G ~/jacy R --skeletons=:tsdb/skeletons/tanaka/ :\\*
+    gtest -G ~/jacy R --profiles=:tsdb/skeletons/tanaka/ :\\*
+    gtest -G ~/jacy R --profiles=:tsdb/current --static
 """
 
-import os
 from functools import partial
 from os.path import (
-    abspath, relpath, basename, join as pjoin, exists
+    abspath, relpath, join as pjoin, exists
 )
 
 from gtest.util import (
     prepare_working_directory, prepare_compiled_grammar,
     debug, info, warning, error, red, green, yellow,
-    check_exist, make_keypath,
-    mkprof, run_art
+    make_keypath, dir_is_profile
 )
-from gtest.skeletons import (find_profiles, prepare_profile_keypaths)
+from gtest.skeletons import (
+    prepare_profile_keypaths,
+    test_iterator
+)
 
 from delphin import itsdb
 from delphin.mrs import simplemrs
@@ -39,15 +45,16 @@ from delphin.mrs.compare import compare_bags
 
 
 def run(args):
-    args['--skeletons'] = make_keypath(args['--skeletons'], args['--grammar-dir'])
+    args['--profiles'] = make_keypath(args['--profiles'],args['--grammar-dir'])
     args['--gold'] = make_keypath(args['--gold'], args['--grammar-dir'])
 
     profile_match = partial(
-        skel_has_gold,
-        skel_dir=abspath(args['--skeletons'].path),
-        gold_dir=abspath(args['--gold'].path)
+        test_has_gold,
+        test_dir=abspath(args['--profiles'].path),
+        gold_dir=abspath(args['--gold'].path),
+        skeleton=(not args['--static'])
     )
-    prepare_profile_keypaths(args, args['--skeletons'].path, profile_match)
+    prepare_profile_keypaths(args, args['--profiles'].path, profile_match)
 
     if args['--list-profiles']:
         print('\n'.join(map(lambda p: '{}\t{}'.format(p.key, p.path),
@@ -59,56 +66,49 @@ def run(args):
 
 def prepare(args):
     prepare_working_directory(args)
-    with open(pjoin(args['--working-dir'], 'ace.log'), 'w') as ace_log:
-        prepare_compiled_grammar(args, ace_log=ace_log)
+    if not args['--static']:
+        with open(pjoin(args['--working-dir'], 'ace.log'), 'w') as ace_log:
+            prepare_compiled_grammar(args, ace_log=ace_log)
 
 
 def regression_test(args):
-    for skel in args['<test-pattern>']:
-        name = skel.key
-        if name.startswith(':'):
-            name = name[1:]
+    for test in test_iterator(args):
+        info('Regression testing profile: {}'.format(test.name))
 
-        info('Regression testing profile: {}'.format(skel.key))
+        pass_msg = '{}\t{}'.format(green('pass'), test.name)
+        fail_msg = '{}\t{}; See {}'.format(red('fail'), test.name, test.log)
+        skip_msg = '{}\t{}; See {}'.format(yellow('skip'), test.name, test.log)
 
-        dest = pjoin(args['--working-dir'], basename(skel.path))
-        logf = pjoin(args['--working-dir'], 'run-{}.log'.format(name))
+        gold = gold_path(
+            test.path,
+            args['--profiles'].path,
+            args['--gold'].path
+        )
 
-        gold = gold_path(skel.path, args['--skeletons'].path, args['--gold'].path)
-
-        pass_msg = '{}\t{}'.format(green('pass'), skel.key)
-        fail_msg = '{}\t{}; See {}'.format(red('fail'), skel.key, logf)
-        skip_msg = '{}\t{}; See {}'.format(yellow('skip'), skel.key, logf)
-
-        if not (check_exist(skel.path) and check_exist(gold)):
-            print(skip_msg)
-            continue
-        
-        with open(logf, 'w') as logfile:
-            mkprof(skel.path, dest, log=logfile)
-            run_art(
-                args['--compiled-grammar'].path,
-                dest,
-                options=args['--art-opts'],
-                ace_preprocessor=args['--preprocessor'],
-                ace_options=args['--ace-opts'],
-                log=logfile
-            )
-            success = compare_mrs(dest, gold, log=logfile)
+        # if not (check_exist(test.path) and check_exist(gold)):
+        #     print(skip_msg)
+        #     continue
+        with open(test.log, 'a') as logfile:
+            success = compare_mrs(test.destination, gold, log=logfile)
             print(pass_msg if success else fail_msg)
 
 
-def gold_path(skel_path, skel_dir, gold_dir):
+def gold_path(test_path, test_dir, gold_dir):
     """
-    Calculate the gold profile path based on the skeleton path.
+    Calculate the gold profile path based on the testsuite path.
     """
-    return pjoin(gold_dir, relpath(abspath(skel_path), skel_dir))
+    return pjoin(gold_dir, relpath(abspath(test_path), test_dir))
 
-def skel_has_gold(skel_path, skel_dir, gold_dir):
+def test_has_gold(test_path, test_dir, gold_dir, skeleton):
     """
-    Return True if the skeleton has a corollary in the gold directory.
+    Return True if the testsuite has a corollary in the gold directory.
     """
-    return exists(gold_path(skel_path, skel_dir, gold_dir))
+    gold = gold_path(test_path, test_dir, gold_dir)
+    return (
+        exists(gold) and
+        dir_is_profile(test_path, skeleton=skeleton) and
+        dir_is_profile(gold, skeleton=False)
+    )
 
 def compare_mrs(dest_dir, gold_dir, log=None):
     debug('Comparing output ({}) to gold ({})'.format(dest_dir, gold_dir), log)

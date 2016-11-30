@@ -2,25 +2,28 @@
 """
 Validate semantic outputs from a grammar
 
-Usage: gtest (M|semantics) [--skeletons=DIR]
-                           (--list-profiles | <test-pattern> ...)
+Usage: gtest (M|semantics) [--profiles=DIR] [--static]
+                           [--list-profiles]
+                           [<test-pattern> ...]
 
 Arguments (RELPATH: {skeletons}):
-  <test-pattern>        path or glob-pattern to a test skeleton
+  <test-pattern>        path or glob-pattern to a test skeleton or profile
 
 Options (RELPATH: {grammar-dir}):
-  --skeletons=DIR       skeleton dir [default: :tsdb/skeletons/]
+  --profiles=DIR        profile or skeleton dir [default: :tsdb/skeletons/]
+  -s, --static          don't parse; do static analysis of parsed profiles
   -l, --list-profiles   don't test, just list testable profiles
 
 Examples:
     gtest -G ~/mygram M --list-profiles
     gtest -G ~/mygram M :abc
+    gtest -G ~/mygram M --profiles=:tsdb/gold --static
 """
 
-import re
+from __future__ import print_function
+
 from functools import partial
-from os.path import (join as pjoin, basename, normpath, sep)
-from subprocess import CalledProcessError
+from os.path import join as pjoin
 
 from delphin import itsdb
 from delphin.mrs import simplemrs, path as mp
@@ -29,20 +32,19 @@ from delphin._exceptions import XmrsError
 from gtest.util import (
     prepare_working_directory, prepare_compiled_grammar,
     debug, info, warning, error, red, green, yellow,
-    check_exist, make_keypath, dir_is_profile,
-    mkprof, run_art
+    make_keypath, dir_is_profile,
 )
 
 from gtest.skeletons import (
-    find_profiles, prepare_profile_keypaths,
-    print_profile_header
+    prepare_profile_keypaths,
+    print_profile_header,
+    test_iterator
 )
 
 def run(args):
-    args['--skeletons'] = make_keypath(args['--skeletons'], args['--grammar-dir'])
-
-    profile_match = partial(dir_is_profile, skeleton=True)
-    prepare_profile_keypaths(args, args['--skeletons'].path, profile_match)
+    args['--profiles'] = make_keypath(args['--profiles'],args['--grammar-dir'])
+    profile_match = partial(dir_is_profile, skeleton=(not args['--static']))
+    prepare_profile_keypaths(args, args['--profiles'].path, profile_match)
 
     if args['--list-profiles']:
         print('\n'.join(map(lambda p: '{}\t{}'.format(p.key, p.path),
@@ -54,54 +56,19 @@ def run(args):
 
 def prepare(args):
     prepare_working_directory(args)
-    with open(pjoin(args['--working-dir'], 'ace.log'), 'w') as ace_log:
-        prepare_compiled_grammar(args, ace_log=ace_log)
+    if not args['--static']:
+        with open(pjoin(args['--working-dir'], 'ace.log'), 'w') as ace_log:
+            prepare_compiled_grammar(args, ace_log=ace_log)
 
 
 def semantics_test(args):
-    for skel in args['<test-pattern>']:
-        name = skel.key
-        logf = pjoin(
-            args['--working-dir'],
-            'run-{}.log'.format(
-                '_'.join(normpath(re.sub(r'^:', '', name)).split(sep))
-            )
-        )
+    for test in test_iterator(args):
+        info('Semantic testing profile: {}'.format(test.name))
 
-        print_profile_header(name, skel.path)
+        print_profile_header(test.name, test.destination)
+        res = semantic_test_result(test.destination)
+        print_result_summary(test.name, res)
 
-        with open(logf, 'w') as logfile:
-            try:
-                res = test_semantics(skel, args, logfile)
-                print_result_summary(name, res)
-            except CalledProcessError:
-                print('  There was an error processing the testsuite.')
-                print('  See {}'.format(logf))
-
-
-def test_semantics(skel, args, logfile):
-    info('Semantic testing profile: {}'.format(skel.key))
-
-    res = {}
-    dest = pjoin(args['--working-dir'], basename(skel.path))
-
-    if not (check_exist(skel.path)):
-        print('  Skeleton was not found: {}'.format(skel.path))
-        return
-
-    mkprof(skel.path, dest, log=logfile)
-    run_art(
-        args['--compiled-grammar'].path,
-        dest,
-        options=args['--art-opts'],
-        ace_preprocessor=args['--preprocessor'],
-        ace_options=args['--ace-opts'],
-        log=logfile
-    )
-
-    res = semantic_test_result(dest)
-
-    return res
 
 def semantic_test_result(prof_path):
     # todo: consider i-wf
@@ -178,4 +145,3 @@ def print_result_summary(name, res):
     print(template2.format('Disconnected', x, m, x/float(m), ''))
     x = res['non-headed']
     print(template2.format('Non-headed', x, m, x/float(m), ''))
-
