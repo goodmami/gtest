@@ -2,9 +2,9 @@
 """
 Validate semantic outputs from a grammar
 
-Usage: gtest (M|semantics) [--profiles=DIR] [--static]
-                           [--list-profiles]
-                           [<test-pattern> ...]
+Usage: gtest semantics [--profiles=DIR] [--static]
+                       [--list-profiles]
+                       [<test-pattern> ...]
 
 Arguments (RELPATH: {skeletons}):
   <test-pattern>        path or glob-pattern to a test skeleton or profile
@@ -15,9 +15,9 @@ Options (RELPATH: {grammar-dir}):
   -l, --list-profiles   don't test, just list testable profiles
 
 Examples:
-    gtest -G ~/mygram M --list-profiles
-    gtest -G ~/mygram M :abc
-    gtest -G ~/mygram M --profiles=:tsdb/gold --static
+    gtest -G ~/mygram semantics --list-profiles
+    gtest -G ~/mygram semantics :abc
+    gtest semantics --static --profiles=:tsdb/gold
 """
 
 from __future__ import print_function

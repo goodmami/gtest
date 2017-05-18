@@ -2,9 +2,9 @@
 """
 Regression test by comparing parse results to stored gold profiles
 
-Usage: gtest (R|regression) [--profiles=DIR] [--gold=DIR] [--static]
-                            [--list-profiles]
-                            [<test-pattern> ...]
+Usage: gtest regression [--profiles=DIR] [--gold=DIR] [--static]
+                        [--list-profiles]
+                        [<test-pattern> ...]
 
 Arguments (RELPATH: {profiles}):
   <test-pattern>        path or glob-pattern to a test skeleton or profile;
@@ -18,10 +18,10 @@ Options (RELPATH: {grammar-dir}):
   -l, --list-profiles   don't test, just list testable profiles
 
 Examples:
-    gtest -G ~/mygram R --list-profiles
-    gtest -G ~/jacy R :mrs
-    gtest -G ~/jacy R --profiles=:tsdb/skeletons/tanaka/ :\\*
-    gtest -G ~/jacy R --profiles=:tsdb/current --static
+    gtest -G ~/mygram regression --list-profiles
+    gtest -G ~/jacy regression :mrs
+    gtest -G ~/jacy regression --profiles=:tsdb/skeletons/tanaka/ :\\*
+    gtest regression --static --profiles=:tsdb/current
 """
 
 from functools import partial

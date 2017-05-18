@@ -2,9 +2,9 @@
 """
 Test parsing coverage
 
-Usage: gtest (C|coverage) [--profiles=DIR] [--static]
-                          [--list-profiles]
-                          [<test-pattern> ...]
+Usage: gtest coverage [--profiles=DIR] [--static]
+                      [--list-profiles]
+                      [<test-pattern> ...]
 
 Arguments (RELPATH: {profiles}):
   <test-pattern>        path or glob-pattern to a test skeleton or profile
@@ -15,9 +15,9 @@ Options (RELPATH: {grammar-dir}):
   -l, --list-profiles   don't test, just list testable profiles
 
 Examples:
-    gtest -G ~/mygram C --list-profiles
-    gtest -G ~/mygram C :abc
-    gtest -G ~/mygram C --profiles=:tsdb/gold --static
+    gtest -G ~/mygram coverage --list-profiles
+    gtest -G ~/mygram coverage :abc
+    gtest coverage --static --profiles=:tsdb/gold
 """
 
 from __future__ import print_function
