@@ -6,12 +6,12 @@ Usage: gtest regression [--profiles=DIR] [--gold=DIR] [--static]
                         [--list-profiles]
                         [<test-pattern> ...]
 
-Arguments (RELPATH: {profiles}):
+Arguments (RELPATH: --profiles):
   <test-pattern>        path or glob-pattern to a test skeleton or profile;
                         only patterns matching both a skeleton/profile AND a
                         gold profile will be allowed
 
-Options (RELPATH: {grammar-dir}):
+Options (RELPATH: --grammar-dir):
   --profiles=DIR        profile or skeleton dir [default: :tsdb/skeletons/]
   --gold=DIR            gold profile dir [default: :tsdb/gold/]
   -s, --static          don't parse; do static analysis of parsed profiles

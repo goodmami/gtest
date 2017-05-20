@@ -8,8 +8,8 @@ Usage:
   gtest [-v...|-q] [options] <command> [<args>...]
 
 Note: When paths begin with a colon (e.g. :ace/config.tdl), they are
-      joined to the pertinent RELPATH; generally this is {grammar-dir}/,
-      but for skeleton-based tests it is {skeletons}/.
+      joined to the pertinent RELPATH; generally this is the value of
+      --grammar-dir, but when selecting tests it is --profiles.
 
 Commands:
   r, regression               compare parsed outputs to gold profiles
@@ -23,7 +23,7 @@ General Options:
   -G DIR, --grammar-dir DIR   grammar directory [default: ./]
   -W DIR, --working-dir DIR   testing directory (temporary if unset)
 
-Grammar Options (RELPATH: {grammar-dir}):
+Grammar Options (RELPATH: --grammar-dir):
   -A PATH, --ace-config PATH  config file for ACE [default: :ace/config.tdl]
   -C PATH, --compiled-grammar PATH
                               grammar binary; if set, don't compile

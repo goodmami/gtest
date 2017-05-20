@@ -6,10 +6,10 @@ Usage: gtest coverage [--profiles=DIR] [--static]
                       [--list-profiles]
                       [<test-pattern> ...]
 
-Arguments (RELPATH: {profiles}):
+Arguments (RELPATH: --profiles):
   <test-pattern>        path or glob-pattern to a test skeleton or profile
 
-Options (RELPATH: {grammar-dir}):
+Options (RELPATH: --grammar-dir):
   --profiles=DIR        profile or skeleton dir [default: :tsdb/skeletons/]
   -s, --static          don't parse; do static analysis of parsed profiles
   -l, --list-profiles   don't test, just list testable profiles
